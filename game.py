@@ -128,7 +128,7 @@ class SimpleCheckersGUI:
 
 monte_carlo_search_agent = MonteCarloSearchAgent(debug=False)
 random_agent = RandomAgent()
-minimax_agent = MinimaxSearchAgent()
+minimax_agent = MinimaxSearchAgent(depth=2)
 def main(agent1, agent2):
     for i in range(100):
         root = tk.Tk()
@@ -137,4 +137,4 @@ def main(agent1, agent2):
         # app = SimpleCheckersGUI(game, test=True)
         # app.run()
 
-main(random_agent, minimax_agent)
+main(random_agent, monte_carlo_search_agent)

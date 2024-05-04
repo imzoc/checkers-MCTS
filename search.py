@@ -95,7 +95,7 @@ class MonteCarloSearchAgent(Agent):
         """
         current_node = root
         while current_node.children:
-            current_node = self.select_child_node_with_UCB1(current_node)
+            current_node = self.select_child_node_randomly(current_node)
         return current_node
 
     def select_child_node_with_UCB1(self, node, c=1.4):
@@ -146,17 +146,16 @@ class MonteCarloSearchAgent(Agent):
             current_node = current_node.parent
 
 class MinimaxSearchAgent:
-    def __init__(self, depth=2):
+    def __init__(self, depth=3):
         self.evaluation_function = self.get_player_piece_ratio
         self.depth = depth
 
     def __str__(self):
         return "MiniMax Agent"
 
-    def get_player_piece_ratio(self, game_state):
+    def get_player_piece_ratio(self, game_state, player):
         """ Returns the piece ratio between game_state.current_player
         and the other player. """
-        player = game_state.current_player
         other_player = game_state.other_player(player)
         player_count = (
             game_state.board.piece_count(player) +
@@ -186,7 +185,7 @@ class MinimaxSearchAgent:
         This is the equivalent of every ghost determining the lowest
         value of all the moves they can make. """
         if game_state.is_game_over() or depth == self.depth:
-            return self.evaluation_function(game_state)
+            return self.evaluation_function(game_state, game_state.other_player())
 
         v = float('inf')
         for action in game_state.get_legal_moves():
@@ -200,7 +199,7 @@ class MinimaxSearchAgent:
         This is the equivalent of Pacman deciding the highest value
         of all moves he can make. """
         if game_state.is_game_over() or depth == self.depth:
-            return self.evaluation_function(game_state)
+            return self.evaluation_function(game_state, game_state.current_player)
 
         v = float('-inf')
         for action in game_state.get_legal_moves():
