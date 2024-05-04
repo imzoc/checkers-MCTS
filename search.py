@@ -146,28 +146,69 @@ class MonteCarloSearchAgent(Agent):
             current_node = current_node.parent
 
 class MinimaxSearchAgent:
+    def __init__(self, depth=2):
+        self.evaluation_function = self.get_player_piece_ratio
+        self.depth = depth
+
+    def __str__(self):
+        return "MiniMax Agent"
+
+    def get_player_piece_ratio(self, game_state, player=None):
+        """ Assumes player is 1 or 2 or unspecified, in which case
+        the function will assign player to game_state.current_player.
+        """
+        if not player:
+            player = game_state.current_player
+        other_player = game_state.other_player(player)
+        player_count = (
+            game_state.board.piece_count(player) +
+            game_state.board.piece_count(player+2)
+        )
+        other_player_count = (
+            game_state.board.piece_count(other_player) +
+            game_state.board.piece_count(other_player + 2)
+        )
+        if other_player_count == 0:
+            return float('inf')
+        return player_count / other_player_count
+
     def get_action(self, game_state):
-        successor_states = {action: game_state.generate_successor(0, action)\
+        action_successor = {action: game_state.generate_successor(action)\
             for action in game_state.get_legal_moves()}
 
-        min_values = {action: self.min_value(successor)\
-            for action, successor in successor_states.items()}
+        action_value = {action: self.min_value(successor)\
+            for action, successor in action_successor.items()}
         
-        return max(min_values, key=lambda x: min_values[x])
+        return max(action_value, key=lambda x: action_value[x])
     
     def min_value(self, game_state, depth=0):
         """ Recursive min layers in the Minimax algorithm.
 
         This is the equivalent of every ghost determining the lowest
         value of all the moves they can make. """
-        if terminal_test(state):
-            return self.evaluationFunction(state)
-        
-        if ghost_index >= state.getNumAgents():
-            return self.max_value(state, depth + 1)
+        if game_state.is_game_over() or depth == self.depth:
+            return self.evaluation_function(game_state)
 
         v = float('inf')
-        for action in state.getLegalActions(ghost_index):
-            successor = state.generateSuccessor(ghost_index, action)
-            v = min(v, self.min_value(successor, depth, ghost_index + 1))
+        for action in game_state.get_legal_moves():
+            successor = game_state.generate_successor(action)
+            v = min(v, self.max_value(successor, depth=depth))
         return v
+
+    def max_value(self, game_state, depth=0):
+        """ The complete max function in the Minimax algorithm.
+
+        This is the equivalent of Pacman deciding the highest value
+        of all moves he can make. """
+        if game_state.is_game_over() or depth == self.depth:
+            return self.evaluation_function(game_state)
+
+        v = float('-inf')
+        for action in game_state.get_legal_moves():
+            successor = game_state.generate_successor(action)
+            v = max(v, self.min_value(successor, depth=depth + 1))
+        return v
+
+minimax_agent = MinimaxSearchAgent()
+game = CheckersGame()
+print(minimax_agent.get_player_piece_ratio(game, 1))

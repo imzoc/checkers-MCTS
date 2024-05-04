@@ -125,14 +125,16 @@ class SimpleCheckersGUI:
         self.root.mainloop()
 
 
-def main():
-    monte_carlo_search_agent = MonteCarloSearchAgent(debug=False)
-    random_agent = RandomAgent()
+
+monte_carlo_search_agent = MonteCarloSearchAgent(debug=False)
+random_agent = RandomAgent()
+minimax_agent = MinimaxSearchAgent()
+def main(agent1, agent2):
     for i in range(100):
         root = tk.Tk()
-        game = Game(random_agent, monte_carlo_search_agent, test=False)
+        game = Game(agent1, agent2, test=False)
         game.run()
         # app = SimpleCheckersGUI(game, test=True)
         # app.run()
 
-main()
+main(random_agent, minimax_agent)

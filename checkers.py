@@ -117,11 +117,15 @@ class CheckersGame:
             
         return jump_moves
     
-    def other_player(self):
-        if self.current_player == 1:
+    def other_player(self, other_player=None):
+        if not other_player:
+            other_player = self.current_player
+        if other_player == 1:
             return 2
-        else:
+        elif other_player == 2:
             return 1
+        else:
+            raise ValueError("Player is not 1 or 2.")
 
     def is_game_over(self):
         # Return True if the game has ended, False otherwise
@@ -173,6 +177,16 @@ class CheckersBoard:
     def __contains__(self, item):
         # Return if the board has a certain piece
         return any(item in row for row in self.board)
+
+    def piece_count(self, piece):
+        """ Returns the number of piece in the board. """
+        count = 0
+        for row in self.board:
+            for p in row:
+                if p == piece:
+                    count += 1
+        return count
+
 
     def copy(self):
         # Create a deep copy of this CheckersBoard
