@@ -153,12 +153,10 @@ class MinimaxSearchAgent:
     def __str__(self):
         return "MiniMax Agent"
 
-    def get_player_piece_ratio(self, game_state, player=None):
-        """ Assumes player is 1 or 2 or unspecified, in which case
-        the function will assign player to game_state.current_player.
-        """
-        if not player:
-            player = game_state.current_player
+    def get_player_piece_ratio(self, game_state):
+        """ Returns the piece ratio between game_state.current_player
+        and the other player. """
+        player = game_state.current_player
         other_player = game_state.other_player(player)
         player_count = (
             game_state.board.piece_count(player) +
@@ -179,6 +177,7 @@ class MinimaxSearchAgent:
         action_value = {action: self.min_value(successor)\
             for action, successor in action_successor.items()}
         
+        # argmax
         return max(action_value, key=lambda x: action_value[x])
     
     def min_value(self, game_state, depth=0):
@@ -208,7 +207,3 @@ class MinimaxSearchAgent:
             successor = game_state.generate_successor(action)
             v = max(v, self.min_value(successor, depth=depth + 1))
         return v
-
-minimax_agent = MinimaxSearchAgent()
-game = CheckersGame()
-print(minimax_agent.get_player_piece_ratio(game, 1))
