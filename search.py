@@ -70,7 +70,7 @@ class MonteCarloSearchAgent(Agent):
         In each trial, a leaf node on the self.root tree is selected and expanded,
         and then a random simulation is run generating a winner.
         The results backpropogated up the tree for each simulation. """
-        root = Node(game_state)
+        root = Node(game_state=game_state)
         for i in range(self.trials):
             leaf_node = self.select_leaf_node(root)
             self.expand_leaf_node(leaf_node)
@@ -126,7 +126,7 @@ class MonteCarloSearchAgent(Agent):
     def expand_leaf_node(self, node):
         """ Expands a leaf node (i.e. generates all of its children
         and adds them to its children list). """
-        node.children = [Node(node, move) for move in node.game_state.get_legal_moves()]
+        node.children = [Node(node=node, move=move) for move in node.game_state.get_legal_moves()]
 
     def simulate(self, node):
         """ Simulates random game play starting at node's game_state.
