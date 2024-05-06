@@ -29,6 +29,7 @@ class Node:
 
 class Agent:
     """ Class stub for all Agents (they should implement these methods). """
+
     def __str__(self):
         return "Unspecified Agent"
 
@@ -54,7 +55,7 @@ class MonteCarloSearchAgent(Agent):
         self.debug = debug
 
     def __str__(self):
-        return 'Monte Carlo Search Agent'
+        return f'Monte Carlo Search Agent. {self.trials} Trials'
 
     def get_action(self, game_state):
         """ Runs MCTS. After MCTS is run, the node with the highest win to visits ratio is
@@ -62,8 +63,11 @@ class MonteCarloSearchAgent(Agent):
         """
         root = self.run_MCTS(game_state)
 
-        best_child = max(root.children, key=lambda n: self.get_win_probability(n))
-        return best_child.move
+        if root.children:
+            best_child = max(root.children, key=lambda n: self.get_win_probability(n))
+            return best_child.move
+        else:
+            raise ValueError("No actions to choose from.")
 
     def run_MCTS(self, game_state):
         """ Generates a MCTS tree for game_state and returns the root node.
@@ -74,19 +78,22 @@ class MonteCarloSearchAgent(Agent):
         for i in range(self.trials):
             leaf_node = self.select_leaf_node(root)
             self.expand_leaf_node(leaf_node)
-            result = self.simulate(leaf_node)
-            self.backpropogate(leaf_node, result)
+            if leaf_node.children: # not a terminal state
+                leaf_node = random.choice(leaf_node.children) # so that the child's value is updated in backpropagation
+            winner = self.simulate(leaf_node)
+            self.backpropogate(leaf_node, int(winner == game_state.current_player))
 
-            if not self.debug:
+            if self.debug:
                 sys.stdout.write(f"\r{i} trials complete")
                 sys.stdout.flush()
-        print()
 
         return root
 
     def get_win_probability(self, node):
         """ A node/game_state's win probability is the ratio of wins
         to visits in the MCTS simulations. """
+        if node.visits == 0:
+            return float('-inf')
         return node.wins / node.visits
 
     def select_leaf_node(self, root):
@@ -95,7 +102,7 @@ class MonteCarloSearchAgent(Agent):
         """
         current_node = root
         while current_node.children:
-            current_node = self.select_child_node_randomly(current_node)
+            current_node = self.select_child_node_with_UCB1(current_node)
         return current_node
 
     def select_child_node_with_UCB1(self, node, c=1.4):
@@ -121,28 +128,33 @@ class MonteCarloSearchAgent(Agent):
 
     def select_child_node_randomly(self, node):
         """ Randomly select a successor state node for a game_state node. """
-        return random.choice(node.children)
+        random.shuffle(node.children)
+        return node.children[0]
 
     def expand_leaf_node(self, node):
-        """ Expands a leaf node (i.e. generates all of its children
+        """ Expands a leaf node (i.e. generates nodes for all of its children
         and adds them to its children list). """
         node.children = [Node(node=node, move=move) for move in node.game_state.get_legal_moves()]
+        ### If node is a terminal state, this will not generate any children.
 
     def simulate(self, node):
         """ Simulates random game play starting at node's game_state.
         Returns the result (who won). """
-        game_copy = node.game_state.generate_successor(move=None)
-        winner = game_copy.random_play()
+        game_copy = node.game_state.copy()
 
-        return winner
+        while not game_copy.is_game_over():
+            possible_moves = game_copy.get_legal_moves()
+            random_move = random.choice(possible_moves)
+            game_copy.make_move(random_move)
+        return game_copy.get_winner()
 
-    def backpropogate(self, node, winner):
+    def backpropogate(self, node, result):
         """ Updates win counts for node and all ancestor nodes up until root.
         Winner represents who won. """
         current_node = node
         while current_node:
             current_node.visits += 1
-            current_node.wins += int(current_node.game_state.current_player == winner)
+            current_node.wins += result
             current_node = current_node.parent
 
 class MinimaxSearchAgent:
@@ -150,12 +162,12 @@ class MinimaxSearchAgent:
         self.evaluation_function = self.get_player_piece_ratio
         self.depth = depth
 
+
     def __str__(self):
-        return "MiniMax Agent"
+        return f"MiniMax Agent. Depth {self.depth}"
 
     def get_player_piece_ratio(self, game_state, player):
-        """ Returns the piece ratio between game_state.current_player
-        and the other player. """
+        """ Returns the piece ratio between player and the other player. """
         other_player = game_state.other_player(player)
         player_count = (
             game_state.board.piece_count(player) +
@@ -173,11 +185,11 @@ class MinimaxSearchAgent:
         action_successor = {action: game_state.generate_successor(action)\
             for action in game_state.get_legal_moves()}
 
-        action_value = {action: self.min_value(successor)\
+        action_values = {action: self.min_value(successor)\
             for action, successor in action_successor.items()}
         
         # argmax
-        return max(action_value, key=lambda x: action_value[x])
+        return max(action_values, key=lambda x: action_values[x])
     
     def min_value(self, game_state, depth=0):
         """ Recursive min layers in the Minimax algorithm.
@@ -190,7 +202,7 @@ class MinimaxSearchAgent:
         v = float('inf')
         for action in game_state.get_legal_moves():
             successor = game_state.generate_successor(action)
-            v = min(v, self.max_value(successor, depth=depth))
+            v = min(v, self.max_value(successor, depth=depth + 1)) 
         return v
 
     def max_value(self, game_state, depth=0):
@@ -204,5 +216,47 @@ class MinimaxSearchAgent:
         v = float('-inf')
         for action in game_state.get_legal_moves():
             successor = game_state.generate_successor(action)
-            v = max(v, self.min_value(successor, depth=depth + 1))
+            v = max(v, self.min_value(successor, depth=depth))
+        return v
+
+
+class AlphaBetaMinimaxAgent(MinimaxSearchAgent):
+    def get_action(self, game_state):
+        return self.max_value(game_state, float('-inf'), float('inf'), argmax=True)
+
+    def max_value(self, game_state, alpha, beta, depth=0, argmax=False):
+        if game_state.is_game_over() or depth == self.depth:
+            return self.evaluation_function(game_state, game_state.current_player)
+        
+        v = float('-inf')
+        action_values = {}
+        for action in game_state.get_legal_moves():
+            successor = game_state.generate_successor(action)
+            v = max(v, self.min_value(successor, alpha, beta, depth=depth))
+            action_values[action] = v
+
+            if v >= beta: # prune all the other branches!
+                if argmax:
+                    return next(action for action, value in action_values.items() if v == value)
+                else:
+                    return v
+            alpha = max(alpha, v)
+        
+        if argmax:
+            return next(action for action, value in action_values.items() if v == value)
+        else:
+            return v
+
+    def min_value(self, game_state, alpha, beta, depth=0):
+        if game_state.is_game_over() or depth == self.depth:
+            return self.evaluation_function(game_state, game_state.other_player())
+
+        v = float('inf')
+        for action in game_state.get_legal_moves():
+            successor = game_state.generate_successor(action)
+            v = min(v, self.max_value(successor, alpha, beta, depth=depth+1))
+            if v <= alpha: # prune all the other branches!
+                return v
+            beta = min(beta, v)
+        
         return v

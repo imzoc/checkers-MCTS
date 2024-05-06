@@ -1,8 +1,11 @@
 from checkers import CheckersGame, CheckersBoard
-from search import MonteCarloSearchAgent, RandomAgent, MinimaxSearchAgent
+from search import MonteCarloSearchAgent, RandomAgent, MinimaxSearchAgent, AlphaBetaMinimaxAgent
 
 import tkinter as tk
 from tkinter import scrolledtext
+
+import statistics
+import time
 
 
 class Game:
@@ -10,7 +13,6 @@ class Game:
         self.agent1 = agent1
         self.agent2 = agent2
         self.game_state = CheckersGame(test=test)
-        self.winner = 0
 
         self.test = test
 
@@ -27,13 +29,15 @@ class Game:
             return None
 
 
-    def run(self):
-        i = 1
-        while not self.game_state.is_game_over():
+    def run(self, max_moves=200):
+        i = 0
+        start_time = time.time()
+
+        while self.game_state.is_game_over() == 0 and i < max_moves:
             agent = self.get_agent()
 
             display_info = f"Turn {i}: Player {self.game_state.current_player}, {agent.__str__()}"
-            print(display_info)
+            # print(display_info)
 
             move = agent.get_action(self.game_state)
             if self.test:
@@ -43,7 +47,9 @@ class Game:
 
         ### Game is over now
         self.winner = self.game_state.get_winner()
-        self.print_winner()
+        self.runtime = time.time() - start_time
+        self.turns = i
+
 
     def run_display(self, display):
         i = 1
@@ -125,16 +131,60 @@ class SimpleCheckersGUI:
         self.root.mainloop()
 
 
+def run_game(agent1, agent2):
+    game = Game(agent1, agent2, test=False)
+    game.run()
+    print(f"Game Over. Winner: {game.player_to_agent(game.winner).__str__()}")
 
-monte_carlo_search_agent = MonteCarloSearchAgent(debug=False)
+    return (game.winner, game.runtime, game.turns)
+    
+def n_trials(agent1, agent2, n=100):
+    winners = {'0': 0, '1': 0, '2': 0}
+    game_times = []
+    game_turns = []
+
+    for i in range(n):
+        results = run_game(agent1, agent2)
+        winner, runtime, turns = results
+        winners[str(winner)] += 1
+        game_times.append(runtime)
+        game_turns.append(turns)
+
+    print()
+    print("Simulation complete.")
+    print(f"Winner count: {winners}")
+    print(f"Runtime statistics: {simple_stats(game_times)}")
+    print(f"Turn statistics: {simple_stats(game_turns)}")
+
+import multiprocessing
+def n_trials_parallel(agent1, agent2, n=100):
+    winners = {'0': 0, '1': 0, '2': 0}
+    game_times = []
+    game_turns = []
+
+    with multiprocessing.Pool(10) as pool:
+        results = pool.starmap(run_game, [(agent1, agent2) for _ in range(n)])
+
+    for winner, runtime, turns in results:
+        winners[str(winner)] += 1
+        game_times.append(runtime)
+        game_turns.append(turns)
+
+    print()
+    print("Simulation complete.")
+    print(f"Winner count: {winners}")
+    print(f"Runtime statistics: {simple_stats(game_times)}")
+    print(f"Turn statistics: {simple_stats(game_turns)}")
+def simple_stats(values):
+    mean_val = statistics.mean(values)
+    stddev_val = statistics.stdev(values)
+    return f"Mean: {mean_val}, Standard Deviation: {stddev_val}"
+
+
+monte_carlo_search_agent = MonteCarloSearchAgent(trials=10000, debug=False)
 random_agent = RandomAgent()
 minimax_agent = MinimaxSearchAgent(depth=2)
-def main(agent1, agent2):
-    for i in range(100):
-        root = tk.Tk()
-        game = Game(agent1, agent2, test=False)
-        game.run()
-        # app = SimpleCheckersGUI(game, test=True)
-        # app.run()
+alpha_beta_agent = AlphaBetaMinimaxAgent(depth=3)
 
-main(random_agent, monte_carlo_search_agent)
+n_trials_parallel(monte_carlo_search_agent, random_agent, n=100)
+

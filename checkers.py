@@ -15,13 +15,19 @@ class CheckersGame:
         4 = player 2 king
     """
     def __init__(self, board=None, current_player=1, test=False):
-        self.board = board if board else CheckersBoard(test=test)
+        if isinstance(board, CheckersBoard):
+            self.board = board
+        else:
+            self.board = CheckersBoard(test=test)
         self.current_player = current_player
+        self.move_count = 0
+    
+    def copy(self):
+        return CheckersGame(self.board.copy(), self.current_player)
 
-    def generate_successor(self, move=None):
+    def generate_successor(self, move):
         new_game_state = CheckersGame(self.board.copy(), self.current_player)
-        if move:
-            new_game_state.make_move(move)
+        new_game_state.make_move(move)
         return new_game_state
 
     def make_move(self, moves):
@@ -31,6 +37,7 @@ class CheckersGame:
         for move in moves:
             self.board.make_move(move)
         self.current_player = self.other_player()
+        self.move_count += 1
 
     def get_legal_moves(self, player=None):
         """ Get and return a list of all legal moves for the given player.      
@@ -129,7 +136,7 @@ class CheckersGame:
 
     def is_game_over(self):
         # Return True if the game has ended, False otherwise
-        return self.get_winner() is not None
+        return self.get_winner() != 0
     
     def get_winner(self):
         # Determine and return the winner of the game
@@ -138,15 +145,7 @@ class CheckersGame:
         elif not any(piece in self.board for piece in [2,4]) or not self.get_legal_moves(2):
             return 1
         else:
-            return None # game has not ended
-
-    def random_play(self):
-        while not self.is_game_over():
-            possible_moves = self.get_legal_moves()
-            random_move = random.choice(possible_moves)
-            self.make_move(random_move)
-        winner = self.get_winner()
-        return winner
+            return 0 # game has not ended
 
     
 class CheckersBoard:
